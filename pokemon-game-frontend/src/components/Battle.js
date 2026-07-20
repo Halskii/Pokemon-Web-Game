@@ -8,6 +8,7 @@
 
 import React, { useState } from 'react';
 import './Battle.css';
+import Inventory from './Inventory';
 
 // Props: `battle` (the current battle data from App), `setBattle` (App's state
 // setter, so we can push updates back up), and `onBackToMenu` (a callback).
@@ -16,6 +17,7 @@ function Battle({ battle, setBattle, onBackToMenu }) {
   // than in App. These exist purely to drive the attack animation/UX.
   const [selectedMove, setSelectedMove] = useState(null); // which move is mid-animation
   const [isAttacking, setIsAttacking] = useState(false);  // true while a move resolves
+  const [showItems, setShowItems] = useState(false);      // whether the item picker is open
 
   // --- BACKEND CALL: play a move ----------------------------------------
   const executeMove = async (moveName) => {
@@ -56,6 +58,34 @@ function Battle({ battle, setBattle, onBackToMenu }) {
     }
   };
 
+  // --- BACKEND CALL: use an item (heal, or throw a ball to try to catch) ---
+  const useItem = async (item) => {
+    if (isAttacking) return;
+    setIsAttacking(true);
+    setShowItems(false); // close the picker once something's chosen
+
+    try {
+      // Maps to BattleController's @PostMapping("/{battleId}/item").
+      const response = await fetch(`/api/battle/${battle.id}/item`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ itemId: item.id })
+      });
+
+      if (!response.ok) throw new Error('Failed to use item');
+      const updatedBattle = await response.json();
+
+      // Same animation-delay pattern as executeMove.
+      setTimeout(() => {
+        setBattle(updatedBattle);
+        setIsAttacking(false);
+      }, 1000);
+    } catch (err) {
+      console.error('Error using item:', err);
+      setIsAttacking(false);
+    }
+  };
+
   // --- Small display helpers (plain JS, no React involved) --------------
   // Convert current/max HP into a 0-100 percentage for the health-bar width.
   const getHealthPercentage = (current, max) => {
@@ -72,8 +102,10 @@ function Battle({ battle, setBattle, onBackToMenu }) {
   // Derived values — computed fresh on every render from current state/props.
   // We don't store these in state; they're just read from the latest battle
   // data, which keeps them from ever getting out of sync.
-  const isBattleOver = battle.player.currentHp <= 0 || battle.opponent.currentHp <= 0;
-  const playerWon = battle.opponent.currentHp <= 0 && battle.player.currentHp > 0;
+  // A successful catch (battle.caught) ends the battle without fainting the
+  // opponent, so it has to be checked independently of the HP values.
+  const isBattleOver = battle.caught || battle.player.currentHp <= 0 || battle.opponent.currentHp <= 0;
+  const playerWon = battle.caught || (battle.opponent.currentHp <= 0 && battle.player.currentHp > 0);
 
   return (
     <div className="battle-container">
@@ -140,7 +172,7 @@ function Battle({ battle, setBattle, onBackToMenu }) {
             show the move buttons. Another conditional render via ternary. */}
         {isBattleOver ? (
           <div className="battle-result">
-            <h2>{playerWon ? '🎉 You Won!' : '😢 You Lost!'}</h2>
+            <h2>{battle.caught ? '🎉 Gotcha!' : playerWon ? '🎉 You Won!' : '😢 You Lost!'}</h2>
             <button className="menu-button" onClick={onBackToMenu}>
               Return to Menu
             </button>
@@ -171,6 +203,23 @@ function Battle({ battle, setBattle, onBackToMenu }) {
                 </button>
               ))}
             </div>
+
+            <button
+              className="item-button"
+              onClick={() => setShowItems(true)}
+              disabled={isAttacking}
+            >
+              🎒 Use Item
+            </button>
+
+            {/* Reuse Inventory as a picker: passing onSelectItem turns each row
+                into a button that calls useItem() with the clicked item. */}
+            {showItems && (
+              <Inventory
+                onSelectItem={useItem}
+                onClose={() => setShowItems(false)}
+              />
+            )}
           </div>
         )}
       </div>

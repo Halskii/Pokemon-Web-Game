@@ -30,4 +30,14 @@ public class TrainerController {
         List<Pokemon> collection = trainerService.getCollection();
         return ResponseEntity.ok(collection);
     }
+
+    @PostMapping("/starter/{pokemonId}")
+    public ResponseEntity<String> chooseStarter(@PathVariable int pokemonId) {
+        try {
+            trainerService.chooseStarter(pokemonId);
+            return ResponseEntity.ok("Starter chosen!");
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
 }

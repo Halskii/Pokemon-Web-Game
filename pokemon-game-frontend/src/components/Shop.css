@@ -1,28 +1,28 @@
-.inventory-grid {
+.shop-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
     gap: 20px;
     width: 100%;
 }
 
-.inventory {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  padding: 20px;
-  background-color: #f5f5f5;
-  border-radius: 10px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+.shop {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 20px;
+    background-color: #f5f5f5;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
-.inventory-items {
+.shop-items {
     display: flex;
     flex-direction: column;  /* each item on its own row, top to bottom */
     gap: 10px;
     width: 100%;
 }
 
-.inventory-item {
+.shop-item {
     display: flex;          /* children go in a ROW (flex's default direction) */
     align-items: center;    /* vertically center the icon with the text */
     gap: 8px;               /* space between icon, name, quantity */
@@ -31,26 +31,11 @@
     border-radius: 8px;
 }
 
-.item-qty {
-    margin-left: auto;   /* eats all the free space to the LEFT, shoving qty right */
+.item-price {
+    margin-left: auto;   /* eats all the free space to the LEFT, shoving price right */
     font-weight: bold;
 }
 
 .item-name {
     font-weight: bold;
-}
-
-.item-icon img {
-    width: 32px;
-    height: 32px;
-    image-rendering: pixelated;
-}
-
-.inventory-item.selectable {
-    cursor: pointer;
-    transition: background 0.15s;
-}
-
-.inventory-item.selectable:hover {
-    background: #e8e8e8;
 }

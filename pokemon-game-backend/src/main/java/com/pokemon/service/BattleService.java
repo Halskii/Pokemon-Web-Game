@@ -1,6 +1,8 @@
 package com.pokemon.service;
 
 import com.pokemon.model.Battle;
+import com.pokemon.model.Item;
+import com.pokemon.model.ItemType;
 import com.pokemon.model.Move;
 import com.pokemon.model.Type;
 import com.pokemon.model.TypeEffectiveness;
@@ -15,30 +17,99 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.Random;
+import java.util.stream.Collectors;
 
 @Service
 public class BattleService {
-    
+
+    // Wild encounters are only drawn from the numbered Pokedex (excludes the 999 "Super Pikachu" easter egg).
+    private static final int MAX_WILD_POKEMON_ID = 151;
+
     private final BattleRepository battleRepository;
     private final PokemonRepository pokemonRepository;
+    private final InventoryService inventoryService;
+    private final TrainerService trainerService;
     private final Random random;
 
     @Autowired
-    public BattleService(BattleRepository battleRepository, PokemonRepository pokemonRepository) {
+    public BattleService(BattleRepository battleRepository, PokemonRepository pokemonRepository,
+                          InventoryService inventoryService, TrainerService trainerService) {
         this.battleRepository = battleRepository;
         this.pokemonRepository = pokemonRepository;
+        this.inventoryService = inventoryService;
+        this.trainerService = trainerService;
         this.random = new Random();
     }
-    
-    public Battle startBattle(int playerPokemonId, int opponentPokemonId) {
+
+    public Battle startBattle(int playerPokemonId) {
         Pokemon playerPokemon = pokemonRepository.findById(playerPokemonId)
                 .orElseThrow(() -> new IllegalArgumentException("Player Pokemon not found"));
-        
-        Pokemon opponentPokemon = pokemonRepository.findById(opponentPokemonId)
-                .orElseThrow(() -> new IllegalArgumentException("Opponent Pokemon not found"));
-        
+
+        Pokemon opponentPokemon = pickRandomWildPokemon();
+
         Battle battle = new Battle(playerPokemon, opponentPokemon);
         return battleRepository.save(battle);
+    }
+
+    private Pokemon pickRandomWildPokemon() {
+        List<Pokemon> wildPool = pokemonRepository.findAll().stream()
+                .filter(p -> p.getId() <= MAX_WILD_POKEMON_ID)
+                .collect(Collectors.toList());
+        return wildPool.get(random.nextInt(wildPool.size()));
+    }
+
+    // Uses an item mid-battle: HEALING restores the player's Pokemon's HP,
+    // POKEBALL attempts to catch the opponent. Either way it consumes the turn
+    // unless the catch succeeds, in which case the battle ends immediately.
+    public Battle useItem(String battleId, int itemId) {
+        Battle battle = battleRepository.findById(battleId)
+                .orElseThrow(() -> new IllegalArgumentException("Battle not found"));
+
+        if (battle.isOver()) {
+            throw new IllegalStateException("Battle is already over");
+        }
+
+        Item item = inventoryService.useOneItem(itemId);
+
+        if (item.getItemType() == ItemType.HEALING) {
+            applyHealing(battle, item);
+            executeOpponentTurn(battle);
+        } else if (item.getItemType() == ItemType.POKEBALL) {
+            attemptCatch(battle, item);
+            if (!battle.isCaught()) {
+                executeOpponentTurn(battle);
+            }
+        }
+
+        return battleRepository.save(battle);
+    }
+
+    private void applyHealing(Battle battle, Item item) {
+        Pokemon player = battle.getPlayer();
+        int healedHp = Math.min(player.getMaxHp(), player.getCurrentHp() + item.getPotency());
+        player.setCurrentHp(healedHp);
+        battle.addLogEntry(String.format("%s used %s! Restored HP to %d/%d.",
+                player.getName(), item.getName(), healedHp, player.getMaxHp()));
+    }
+
+    // Catch chance blends ball quality with how weakened the wild Pokemon is:
+    // even at full HP, ball quality alone gives a 30% baseline chance of ballRate,
+    // and that climbs to the full ballRate as the opponent's HP nears zero.
+    private void attemptCatch(Battle battle, Item item) {
+        Pokemon opponent = battle.getOpponent();
+        double ballRate = item.getPotency() / 100.0;
+        double missingHpFactor = 1 - ((double) opponent.getCurrentHp() / opponent.getMaxHp());
+        double chance = Math.max(0, Math.min(1, ballRate * (0.3 + 0.7 * missingHpFactor)));
+
+        boolean success = random.nextDouble() < chance;
+        if (success) {
+            battle.setCaught(true);
+            trainerService.addPokemonToCollection(new Pokemon(opponent));
+            battle.addLogEntry(String.format("Gotcha! %s was caught!", opponent.getName()));
+        } else {
+            battle.addLogEntry(String.format("%s used %s! %s broke free!",
+                    battle.getPlayer().getName(), item.getName(), opponent.getName()));
+        }
     }
 
     // Executes the players move in battle.
