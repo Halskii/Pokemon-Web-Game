@@ -30,3 +30,6 @@ bin/
 .DS_Store
 /pokemon-game-frontend/node_modules
 /pokemon-game-frontend/node_modules
+INTERVIEW-PRACTICE-STORIES.md
+/pokemon-game-backend/target
+/.idea
