@@ -12,8 +12,8 @@ import java.util.stream.Collectors;
 @Service
 public class TrainerService {
 
-    // Bulbasaur, Charmander, Squirtle
-    private static final Set<Integer> STARTER_IDS = Set.of(1, 4, 7);
+    // Bulbasaur, Charmander, Squirtle, Pikachu
+    private static final Set<Integer> STARTER_IDS = Set.of(1, 4, 7, 25);
 
     @Autowired
     private TrainerRepository trainerRepository;

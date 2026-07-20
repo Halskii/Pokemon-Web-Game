@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import './PokemonList.css';
 
-// The three classic starters, by their Pokedex id (must match TrainerService.STARTER_IDS on the backend).
-const STARTER_IDS = [1, 4, 7]; // Bulbasaur, Charmander, Squirtle
+// The three classic starters and Pikachu, id (must match TrainerService.STARTER_IDS on the backend).
+const STARTER_IDS = [1, 4, 7, 25]; // Bulbasaur, Charmander, Squirtle, Pikachu
 
 function StarterSelect({ onStarterChosen }) {
   const [starters, setStarters] = useState([]);
