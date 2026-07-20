@@ -14,6 +14,7 @@ import React, { useState, useEffect } from 'react';
 import './App.css';
 // Child components live in ./components. We render these inside App below.
 import PokemonList from './components/PokemonList';
+import Inventory from './components/Inventory';
 import Battle from './components/Battle';
 
 // A React component is just a function that returns JSX (HTML-like markup).
@@ -35,6 +36,8 @@ function App() {
   const [loading, setLoading] = useState(true);
   // Holds an error message string if a request fails; null when all is well.
   const [error, setError] = useState(null);
+    // Whether the inventory modal is open. (Not implemented yet.)
+    const [showInventory, setShowInventory] = useState(false);
 
   // --- SIDE EFFECT: load data once on startup ---------------------------
   // useEffect runs code *after* the component renders. The second argument is
@@ -145,6 +148,8 @@ function App() {
         <h1>🎮 Pokemon Battle Game</h1>
       </header>
 
+
+
       {/* This is the main section where either the Pokemon list or the battle component
       will be displayed based on the state of the battle. */}
       <main className="App-main">
@@ -155,10 +160,17 @@ function App() {
         {!battle ? (
           // PROPS: we pass data (pokemon) and a callback (onSelectPokemon) down
           // into the child. The child receives these as its function arguments.
-          <PokemonList
-            pokemon={pokemon}
-            onSelectPokemon={handlePokemonSelect}
-          />
+            <div className="menu-layout">
+              {/* inventory FIRST = on the left; && still controls showing it */}
+              <button className={"Inventory-button"} onClick={() => setShowInventory(true)}>
+                Inventory
+              </button>
+              {showInventory && <Inventory onClose={() => setShowInventory(false)} />}
+              <PokemonList
+                  pokemon={pokemon}
+                  onSelectPokemon={handlePokemonSelect}
+              />
+            </div>
         ) : (
           // We also hand Battle the setter itself (setBattle) so it can update
           // the shared battle state directly after each move.
