@@ -40,4 +40,10 @@ public class TrainerController {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
+
+    @PostMapping("/reset")
+    public ResponseEntity<String> resetGame() {
+        trainerService.reset();
+        return ResponseEntity.ok("Game reset");
+    }
 }

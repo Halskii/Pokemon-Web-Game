@@ -34,4 +34,8 @@ public class Trainer {
     public List<Pokemon> getCollection() {
         return new ArrayList<>(collection);
     }
+
+    public void clearCollection() {
+        collection.clear();
+    }
 }

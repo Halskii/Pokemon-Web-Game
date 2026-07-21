@@ -37,4 +37,8 @@ public class Inventory {
     public Map<Integer, Integer> getItemQuantities() {
         return new HashMap<>(itemQuantities);
     }
+
+    public void clear() {
+        itemQuantities.clear();
+    }
 }

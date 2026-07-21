@@ -24,4 +24,10 @@ public class InventoryController {
     public ResponseEntity<List<InventoryEntry>> getInventory() {
         return ResponseEntity.ok(inventoryService.getOwnedItems());
     }
+
+    @PostMapping("/reset")
+    public ResponseEntity<String> resetInventory() {
+        inventoryService.reset();
+        return ResponseEntity.ok("Inventory reset");
+    }
 }

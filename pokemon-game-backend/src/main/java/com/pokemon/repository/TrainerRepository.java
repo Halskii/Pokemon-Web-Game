@@ -27,4 +27,8 @@ public class TrainerRepository {
                 .map(pokemon -> pokemon.getId())
                 .toList());
     }
+
+    public void clearCollection() {
+        player.clearCollection();
+    }
 }

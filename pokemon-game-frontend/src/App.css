@@ -3,6 +3,39 @@
   padding: 20px;
 }
 
+.game-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.game-action-button {
+  background: rgba(255,255,255,0.2);
+  border: 2px solid white;
+  color: white;
+  padding: 10px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+
+.game-action-button.secondary {
+  border-color: #ffb3b3;
+}
+
+.game-action-button:hover {
+  background: rgba(255,255,255,0.35);
+}
+
+.save-message {
+  color: white;
+  margin-top: 8px;
+  font-size: 0.95rem;
+}
+
+
 .App-header {
   text-align: center;
   color: white;

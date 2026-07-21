@@ -50,4 +50,7 @@ public class InventoryService {
         }
         return item;
     }
+    public void reset() {
+        inventoryRepository.reset();
+    }
 }

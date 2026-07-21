@@ -11,12 +11,18 @@ public class InventoryRepository {
     public InventoryRepository() {
         this.inventory = new Inventory();
         // Starting stock so battling/catching can be tested without a shop flow yet.
-        inventory.add(3, 5); // Poke Ball
-        inventory.add(4, 2); // Great Ball
-        inventory.add(1, 3); // Potion
+        inventory.add(3, 10); // Poke Ball
+        inventory.add(1, 5); // Potion
     }
 
     public Inventory getInventory() {
         return inventory;
+    }
+
+    public void reset() {
+        inventory.clear();
+        // Starting stock so battling/catching can be tested without a shop flow yet.
+        inventory.add(3, 10); // Poke Ball
+        inventory.add(1, 5); // Potion
     }
 }

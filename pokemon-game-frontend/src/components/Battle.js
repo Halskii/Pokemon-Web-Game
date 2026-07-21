@@ -11,8 +11,10 @@ import './Battle.css';
 import Inventory from './Inventory';
 
 // Props: `battle` (the current battle data from App), `setBattle` (App's state
-// setter, so we can push updates back up), and `onBackToMenu` (a callback).
-function Battle({ battle, setBattle, onBackToMenu }) {
+// setter, so we can push updates back up), `onBackToMenu` (a callback),
+// `onInventoryChanged` (refreshes the inventory from App after using an item),
+// and `inventoryEntries` (the latest inventory data from App).
+function Battle({ battle, setBattle, onBackToMenu, onInventoryChanged, inventoryEntries }) {
   // LOCAL state — only this component cares about it, so it lives here rather
   // than in App. These exist purely to drive the attack animation/UX.
   const [selectedMove, setSelectedMove] = useState(null); // which move is mid-animation
@@ -78,6 +80,9 @@ function Battle({ battle, setBattle, onBackToMenu }) {
       // Same animation-delay pattern as executeMove.
       setTimeout(() => {
         setBattle(updatedBattle);
+        if (onInventoryChanged) {
+          onInventoryChanged();
+        }
         setIsAttacking(false);
       }, 1000);
     } catch (err) {
@@ -108,140 +113,142 @@ function Battle({ battle, setBattle, onBackToMenu }) {
   const playerWon = battle.caught || (battle.opponent.currentHp <= 0 && battle.player.currentHp > 0);
 
   return (
-    <div className="battle-container">
-      <button className="back-button" onClick={onBackToMenu}>
-        ← Back to Menu
-      </button>
+      <div className="battle-container">
+        <button className="back-button" onClick={onBackToMenu}>
+          ← Back to Menu
+        </button>
 
-      <div className="battle-field">
-        {/* Opponent Pokemon */}
-        <div className="pokemon-slot opponent-slot">
-          <div className="pokemon-info">
-            <h3>{battle.opponent.name}</h3>
-            <div className="health-bar-container">
-              {/* The bar's width and color are computed inline from HP. Because
+        <div className="battle-field">
+          {/* Opponent Pokemon */}
+          <div className="pokemon-slot opponent-slot">
+            <div className="pokemon-info">
+              <h3>{battle.opponent.name}</h3>
+              <div className="health-bar-container">
+                {/* The bar's width and color are computed inline from HP. Because
                   these are recalculated every render, the bar animates smoothly
                   as `battle` updates after each move. */}
-              <div
-                className="health-bar"
-                style={{
-                  width: `${getHealthPercentage(battle.opponent.currentHp, battle.opponent.maxHp)}%`,
-                  backgroundColor: getHealthBarColor(getHealthPercentage(battle.opponent.currentHp, battle.opponent.maxHp))
-                }}
-              ></div>
+                <div
+                    className="health-bar"
+                    style={{
+                      width: `${getHealthPercentage(battle.opponent.currentHp, battle.opponent.maxHp)}%`,
+                      backgroundColor: getHealthBarColor(getHealthPercentage(battle.opponent.currentHp, battle.opponent.maxHp))
+                    }}
+                ></div>
+              </div>
+              <div className="hp-text">
+                HP: {battle.opponent.currentHp} / {battle.opponent.maxHp}
+              </div>
             </div>
-            <div className="hp-text">
-              HP: {battle.opponent.currentHp} / {battle.opponent.maxHp}
-            </div>
-          </div>
-          {/* Conditionally add the "shake" class only while attacking. This is
+            {/* Conditionally add the "shake" class only while attacking. This is
               a common trick: build a className string from state to toggle a
               CSS animation on and off. */}
-          <div className={`pokemon-sprite ${isAttacking ? 'shake' : ''}`}>
-            <img src={battle.opponent.sprite} alt={battle.opponent.name} />
+            <div className={`pokemon-sprite ${isAttacking ? 'shake' : ''}`}>
+              <img src={battle.opponent.sprite} alt={battle.opponent.name} />
+            </div>
+          </div>
+
+          {/* Player Pokemon */}
+          <div className="pokemon-slot player-slot">
+            {/* Same className trick: add "attack" while a move is selected. */}
+            <div className={`pokemon-sprite ${selectedMove ? 'attack' : ''}`}>
+              <img src={battle.player.sprite} alt={battle.player.name} />
+            </div>
+            <div className="pokemon-info">
+              <h3>{battle.player.name}</h3>
+              <div className="health-bar-container">
+                <div
+                    className="health-bar"
+                    style={{
+                      width: `${getHealthPercentage(battle.player.currentHp, battle.player.maxHp)}%`,
+                      backgroundColor: getHealthBarColor(getHealthPercentage(battle.player.currentHp, battle.player.maxHp))
+                    }}
+                ></div>
+              </div>
+              <div className="hp-text">
+                HP: {battle.player.currentHp} / {battle.player.maxHp}
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Player Pokemon */}
-        <div className="pokemon-slot player-slot">
-          {/* Same className trick: add "attack" while a move is selected. */}
-          <div className={`pokemon-sprite ${selectedMove ? 'attack' : ''}`}>
-            <img src={battle.player.sprite} alt={battle.player.name} />
-          </div>
-          <div className="pokemon-info">
-            <h3>{battle.player.name}</h3>
-            <div className="health-bar-container">
-              <div
-                className="health-bar"
-                style={{
-                  width: `${getHealthPercentage(battle.player.currentHp, battle.player.maxHp)}%`,
-                  backgroundColor: getHealthBarColor(getHealthPercentage(battle.player.currentHp, battle.player.maxHp))
-                }}
-              ></div>
-            </div>
-            <div className="hp-text">
-              HP: {battle.player.currentHp} / {battle.player.maxHp}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Battle Controls */}
-      <div className="battle-controls">
-        {/* If the battle is over, show the result + a return button; otherwise
+        {/* Battle Controls */}
+        <div className="battle-controls">
+          {/* If the battle is over, show the result + a return button; otherwise
             show the move buttons. Another conditional render via ternary. */}
-        {isBattleOver ? (
-          <div className="battle-result">
-            <h2>{battle.caught ? '🎉 Gotcha!' : playerWon ? '🎉 You Won!' : '😢 You Lost!'}</h2>
-            <button className="menu-button" onClick={onBackToMenu}>
-              Return to Menu
-            </button>
-          </div>
-        ) : (
-          <div className="moves-grid">
-            <h3>Choose a Move:</h3>
-            <div className="moves">
-              {/* One button per move in the player's move list (again via .map).
-                  The move data originates from the Java Move model. */}
-              {battle.player.moves.map((move) => (
-                <button
-                  key={move.name}
-                  // Highlight this button if it's the one currently selected.
-                  className={`move-button ${selectedMove === move.name ? 'selected' : ''}`}
-                  // Clicking fires the backend call for this move.
-                  onClick={() => executeMove(move.name)}
-                  // The `disabled` prop greys out and blocks the button while an
-                  // attack is resolving — the UI-level partner to the isAttacking
-                  // guard at the top of executeMove.
-                  disabled={isAttacking}
-                >
-                  <div className="move-name">{move.name}</div>
-                  <div className="move-details">
-                    <span className="move-type">{move.type}</span>
-                    <span className="move-power">PWR: {move.power}</span>
-                  </div>
+          {isBattleOver ? (
+              <div className="battle-result">
+                <h2>{battle.caught ? '🎉 Gotcha!' : playerWon ? '🎉 You Won!' : '😢 You Lost!'}</h2>
+                <button className="menu-button" onClick={onBackToMenu}>
+                  Return to Menu
                 </button>
-              ))}
-            </div>
+              </div>
+          ) : (
+              <div className="moves-grid">
+                <h3>Choose a Move:</h3>
+                <div className="moves">
+                  {/* One button per move in the player's move list (again via .map).
+                  The move data originates from the Java Move model. */}
+                  {battle.player.moves.map((move) => (
+                      <button
+                          key={move.name}
+                          // Highlight this button if it's the one currently selected.
+                          className={`move-button ${selectedMove === move.name ? 'selected' : ''}`}
+                          // Clicking fires the backend call for this move.
+                          onClick={() => executeMove(move.name)}
+                          // The `disabled` prop greys out and blocks the button while an
+                          // attack is resolving — the UI-level partner to the isAttacking
+                          // guard at the top of executeMove.
+                          disabled={isAttacking}
+                      >
+                        <div className="move-name">{move.name}</div>
+                        <div className="move-details">
+                          <span className="move-type">{move.type}</span>
+                          <span className="move-power">PWR: {move.power}</span>
+                        </div>
+                      </button>
+                  ))}
+                </div>
 
-            <button
-              className="item-button"
-              onClick={() => setShowItems(true)}
-              disabled={isAttacking}
-            >
-              🎒 Use Item
-            </button>
+                <button
+                    className="item-button"
+                    onClick={() => setShowItems(true)}
+                    disabled={isAttacking}
+                >
+                  🎒 Use Item
+                </button>
 
-            {/* Reuse Inventory as a picker: passing onSelectItem turns each row
+                {/* Reuse Inventory as a picker: passing onSelectItem turns each row
                 into a button that calls useItem() with the clicked item. */}
-            {showItems && (
-              <Inventory
-                onSelectItem={useItem}
-                onClose={() => setShowItems(false)}
-              />
-            )}
-          </div>
-        )}
-      </div>
+                {showItems && (
+                    <Inventory
+                        entries={inventoryEntries}
+                        loading={false}
+                        onSelectItem={useItem}
+                        onClose={() => setShowItems(false)}
+                    />
+                )}
+              </div>
+          )}
+        </div>
 
-      {/* Battle Log */}
-      <div className="battle-log">
-        <h4>Battle Log:</h4>
-        <div className="log-entries">
-          {/* battle.log is an array of message strings from the backend.
+        {/* Battle Log */}
+        <div className="battle-log">
+          <h4>Battle Log:</h4>
+          <div className="log-entries">
+            {/* battle.log is an array of message strings from the backend.
               .slice(-5) keeps only the last 5 entries so the log stays short. */}
-          {battle.log.slice(-5).map((entry, index) => (
-            // These log lines have no unique id, so we fall back to the array
-            // index as the key. That's acceptable here because the list is
-            // append-only display text — but for reorderable data, prefer a
-            // real stable id (as we do everywhere else).
-            <div key={index} className="log-entry">
-              {entry}
-            </div>
-          ))}
+            {battle.log.slice(-5).map((entry, index) => (
+                // These log lines have no unique id, so we fall back to the array
+                // index as the key. That's acceptable here because the list is
+                // append-only display text — but for reorderable data, prefer a
+                // real stable id (as we do everywhere else).
+                <div key={index} className="log-entry">
+                  {entry}
+                </div>
+            ))}
+          </div>
         </div>
       </div>
-    </div>
   );
 }
 

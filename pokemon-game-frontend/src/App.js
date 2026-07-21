@@ -1,35 +1,22 @@
-// ============================================================================
-// App.js — THE ROOT COMPONENT and the "brain" of the frontend.
-//
-// This component does three big things:
-//   1. Holds the app's main STATE (the trainer's collection, the current battle, etc.).
-//   2. TALKS TO THE BACKEND over HTTP (this is the frontend<->backend bridge).
-//   3. Decides which child component to show: starter picker, Pokemon picker, or battle.
-// ============================================================================
-
 import React, { useState, useEffect } from 'react';
 import './App.css';
 import PokemonList from './components/PokemonList';
 import Inventory from './components/Inventory';
 import Battle from './components/Battle';
 import StarterSelect from './components/StarterSelect';
+import { clearGameState, loadGameState, saveGameState } from './utils/gameStorage';
 
 function App() {
-  // The trainer's caught Pokemon (starts empty until a starter is chosen).
-  // This is what "Choose your Pokemon" now picks from, instead of the full Pokedex.
   const [trainerCollection, setTrainerCollection] = useState([]);
+  const [inventory, setInventory] = useState([]);
   const [selectedPokemon, setSelectedPokemon] = useState(null);
   const [battle, setBattle] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [inventoryLoading, setInventoryLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showInventory, setShowInventory] = useState(false);
+  const [saveMessage, setSaveMessage] = useState('');
 
-  useEffect(() => {
-    fetchTrainerCollection();
-  }, []);
-
-  // Maps to TrainerController's @GetMapping on "/api/trainer/collection".
-  // An empty array means the player hasn't picked a starter yet.
   const fetchTrainerCollection = async () => {
     try {
       const response = await fetch('/api/trainer/collection');
@@ -43,8 +30,85 @@ function App() {
     }
   };
 
-  // The backend now picks a random wild opponent itself, so we only send
-  // which of the trainer's own Pokemon is fighting.
+  const fetchInventory = async () => {
+    try {
+      const response = await fetch('/api/inventory');
+      if (!response.ok) throw new Error('Failed to fetch inventory');
+      const data = await response.json();
+      setInventory(data);
+      setInventoryLoading(false);
+    } catch (err) {
+      console.error('Error fetching inventory:', err);
+      setInventoryLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const savedState = loadGameState();
+
+    if (savedState) {
+      setTrainerCollection(savedState.trainerCollection || []);
+      setInventory(savedState.inventory || []);
+      setSelectedPokemon(savedState.selectedPokemon || null);
+      setBattle(savedState.battle || null);
+      setShowInventory(Boolean(savedState.showInventory));
+      setInventoryLoading(false);
+      setLoading(false);
+      setSaveMessage('Loaded saved game');
+      return;
+    }
+
+    fetchTrainerCollection();
+    fetchInventory();
+  }, []);
+
+  useEffect(() => {
+    if (loading) return;
+
+    saveGameState({
+      trainerCollection,
+      inventory,
+      selectedPokemon,
+      battle,
+      showInventory
+    });
+  }, [battle, inventory, loading, selectedPokemon, showInventory, trainerCollection]);
+
+  const handleSaveGame = () => {
+    const saved = saveGameState({
+      trainerCollection,
+      inventory,
+      selectedPokemon,
+      battle,
+      showInventory
+    });
+
+    setSaveMessage(saved ? 'Game saved!' : 'Could not save game');
+  };
+
+  const handleLoadGame = () => {
+    const savedState = loadGameState();
+
+    if (!savedState) {
+      setSaveMessage('No saved game found');
+      return;
+    }
+
+    setTrainerCollection(savedState.trainerCollection || []);
+    setInventory(savedState.inventory || []);
+    setSelectedPokemon(savedState.selectedPokemon || null);
+    setBattle(savedState.battle || null);
+    setShowInventory(Boolean(savedState.showInventory));
+    setLoading(false);
+    setInventoryLoading(false);
+    setSaveMessage('Saved game loaded');
+  };
+
+  const handleClearSave = () => {
+    const cleared = clearGameState();
+    setSaveMessage(cleared ? 'Saved game cleared' : 'Could not clear saved game');
+  };
+
   const startBattle = async (playerPokemonId) => {
     try {
       const response = await fetch('/api/battle/start', {
@@ -61,24 +125,49 @@ function App() {
     }
   };
 
-  // Called by PokemonList when the user clicks a Pokemon card.
   const handlePokemonSelect = (pokemon) => {
     setSelectedPokemon(pokemon);
     startBattle(pokemon.id);
   };
 
-  // Called by Battle's "Back to Menu" button.
   const handleBackToMenu = () => {
-    // Catching a wild Pokemon adds it to the collection on the backend; refresh
-    // here so the newly caught Pokemon shows up in the picker right away.
     if (battle && battle.caught) {
       fetchTrainerCollection();
+      fetchInventory();
     }
+
     setBattle(null);
     setSelectedPokemon(null);
   };
 
-  // Called by StarterSelect once the player has picked Bulbasaur/Charmander/Squirtle.
+  const handleNewGame = async () => {
+    try {
+      const [trainerResponse, inventoryResponse] = await Promise.all([
+        fetch('/api/trainer/reset', { method: 'POST' }),
+        fetch('/api/inventory/reset', { method: 'POST' })
+      ]);
+
+      if (!trainerResponse.ok || !inventoryResponse.ok) {
+        throw new Error('Failed to reset game');
+      }
+
+      clearGameState();
+
+      setTrainerCollection([]);
+      setInventory([]);
+      setSelectedPokemon(null);
+      setBattle(null);
+      setShowInventory(false);
+      setLoading(false);
+      setInventoryLoading(false);
+      setError(null);
+      setSaveMessage('New game started');
+    } catch (err) {
+      setError(err.message);
+      setSaveMessage('Could not start a new game');
+    }
+  };
+
   const handleStarterChosen = () => {
     fetchTrainerCollection();
   };
@@ -92,37 +181,63 @@ function App() {
   }
 
   return (
-    <div className="App">
-      <header className="App-header">
-        <h1>🎮 Pokemon Battle Game</h1>
-      </header>
+      <div className="App">
+        <header className="App-header">
+          <h1>🎮 Pokemon Battle Game</h1>
 
-      <main className="App-main">
-        {!battle ? (
-          trainerCollection.length === 0 ? (
-            // No starter yet — show the starter picker instead of the menu.
-            <StarterSelect onStarterChosen={handleStarterChosen} />
+          <div className="game-actions">
+            <button className="game-action-button" onClick={handleNewGame}>
+              New Game
+            </button>
+            <button className="game-action-button" onClick={handleSaveGame}>
+              Save Game
+            </button>
+            <button className="game-action-button" onClick={handleLoadGame}>
+              Load Game
+            </button>
+            <button className="game-action-button secondary" onClick={handleClearSave}>
+              Clear Save
+            </button>
+          </div>
+
+          {saveMessage && <p className="save-message">{saveMessage}</p>}
+        </header>
+
+        <main className="App-main">
+          {!battle ? (
+              trainerCollection.length === 0 ? (
+                  <StarterSelect onStarterChosen={handleStarterChosen} />
+              ) : (
+                  <div className="menu-layout">
+                    <button className="Inventory-button" onClick={() => setShowInventory(true)}>
+                      Inventory
+                    </button>
+
+                    {showInventory && (
+                        <Inventory
+                            entries={inventory}
+                            loading={inventoryLoading}
+                            onClose={() => setShowInventory(false)}
+                        />
+                    )}
+
+                    <PokemonList
+                        pokemon={trainerCollection}
+                        onSelectPokemon={handlePokemonSelect}
+                    />
+                  </div>
+              )
           ) : (
-            <div className="menu-layout">
-              <button className={"Inventory-button"} onClick={() => setShowInventory(true)}>
-                Inventory
-              </button>
-              {showInventory && <Inventory onClose={() => setShowInventory(false)} />}
-              <PokemonList
-                pokemon={trainerCollection}
-                onSelectPokemon={handlePokemonSelect}
+              <Battle
+                  battle={battle}
+                  setBattle={setBattle}
+                  onBackToMenu={handleBackToMenu}
+                  onInventoryChanged={fetchInventory}
+                  inventoryEntries={inventory}
               />
-            </div>
-          )
-        ) : (
-          <Battle
-            battle={battle}
-            setBattle={setBattle}
-            onBackToMenu={handleBackToMenu}
-          />
-        )}
-      </main>
-    </div>
+          )}
+        </main>
+      </div>
   );
 }
 

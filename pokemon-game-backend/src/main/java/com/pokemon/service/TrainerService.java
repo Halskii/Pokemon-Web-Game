@@ -50,4 +50,8 @@ public class TrainerService {
         }
         addPokemonToCollection(pokemonId);
     }
+
+    public void reset() {
+        trainerRepository.clearCollection();
+    }
 }
