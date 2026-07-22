@@ -9,6 +9,7 @@ import com.pokemon.model.TypeEffectiveness;
 import com.pokemon.model.Pokemon;
 import com.pokemon.repository.BattleRepository;
 import com.pokemon.repository.PokemonRepository;
+import com.pokemon.repository.TrainerRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -22,28 +23,46 @@ import java.util.stream.Collectors;
 @Service
 public class BattleService {
 
-    // Wild encounters are only drawn from the numbered Pokedex (excludes the 999 "Super Pikachu" easter egg).
-    private static final int MAX_WILD_POKEMON_ID = 151;
+    // Wild encounters are only drawn from the numbered Pokedex.
+    private static final int MAX_WILD_POKEMON_ID = 999;
 
     private final BattleRepository battleRepository;
     private final PokemonRepository pokemonRepository;
+    private final TrainerRepository trainerRepository;
     private final InventoryService inventoryService;
     private final TrainerService trainerService;
     private final Random random;
 
     @Autowired
     public BattleService(BattleRepository battleRepository, PokemonRepository pokemonRepository,
-                          InventoryService inventoryService, TrainerService trainerService) {
+                          TrainerRepository trainerRepository,
+                         InventoryService inventoryService, TrainerService trainerService) {
         this.battleRepository = battleRepository;
         this.pokemonRepository = pokemonRepository;
+        this.trainerRepository = trainerRepository;
         this.inventoryService = inventoryService;
         this.trainerService = trainerService;
         this.random = new Random();
     }
 
     public Battle startBattle(int playerPokemonId) {
-        Pokemon playerPokemon = pokemonRepository.findById(playerPokemonId)
-                .orElseThrow(() -> new IllegalArgumentException("Player Pokemon not found"));
+        List<Pokemon> collection = trainerService.getCollection();
+        System.out.println("Player Pokemon ID requested: " + playerPokemonId);
+        System.out.println("Collection size: " + collection.size());
+        collection.forEach(p -> System.out.println("  Pokemon in collection: ID=" + p.getId() + ", Name=" + p.getName()));
+        
+        Pokemon playerPokemon;
+        if (collection.isEmpty()) {
+            // Fallback: If collection is empty, use repository (for backwards compatibility)
+            System.out.println("Collection empty, falling back to repository");
+            playerPokemon = pokemonRepository.findById(playerPokemonId)
+                    .orElseThrow(() -> new IllegalArgumentException("Player Pokemon not found"));
+        } else {
+            playerPokemon = collection.stream()
+                    .filter(p -> p.getId() == playerPokemonId)
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException("Player Pokemon not found in collection"));
+        }
 
         Pokemon opponentPokemon = pickRandomWildPokemon();
 
@@ -130,6 +149,7 @@ public class BattleService {
         // Calculate and apply damage
         ArrayList<Double> results = new ArrayList<Double>();
         results.addAll(calculateDamage(
+                battle,
                 battle.getPlayer().getAttack(),
                 battle.getOpponent().getDefense(),
                 move.getPower(),
@@ -150,6 +170,19 @@ public class BattleService {
         if (battle.getOpponent().isFainted()) {
             battle.addLogEntry(String.format("%s fainted! You win!",
                     battle.getOpponent().getName()));
+
+            // Level up the battle copy
+            Pokemon playerPokemon = battle.getPlayer();
+            playerPokemon.levelUp();
+            battle.addLogEntry(String.format("%s grew to level %d!",
+                    playerPokemon.getName(), playerPokemon.getLevel()));
+
+            // Persist level-up to the player's actual collection
+            trainerRepository.getPlayer().getCollection().stream()
+                    .filter(p -> p.getId() == playerPokemon.getId())
+                    .findFirst()
+                    .ifPresent(Pokemon::levelUp);
+
             return battleRepository.save(battle);
         }
         
@@ -172,6 +205,7 @@ public class BattleService {
 
         ArrayList<Double> results = new ArrayList<Double>();
         results.addAll(calculateDamage(
+                battle,
                 battle.getOpponent().getAttack(),
                 battle.getPlayer().getDefense(),
                 opponentMove.getPower(),
@@ -201,7 +235,7 @@ public class BattleService {
      * Simplified damage calculation based on Pokemon formula
      * Formula: ((2 * Level / 5 + 2) * Power * Attack / Defense) / 50 * RandomFactor
      */
-    private ArrayList<Double> calculateDamage(int attack, int defense, int movePower, Type moveType, Type trainerType, Type opponentType, Boolean isPlayer) {
+    private ArrayList<Double> calculateDamage(Battle battle, int attack, int defense, int movePower, Type moveType, Type trainerType, Type opponentType, Boolean isPlayer) {
         Type enemyType = null;
 
         if (movePower == 0) {
@@ -219,8 +253,7 @@ public class BattleService {
         System.out.println("Move type: " + moveType);
 
         double damage = 0;
-        double level = 5; // Assuming all Pokemon are level 5
-        double baseDamage = ((((2 * level) / 5) + 2) * movePower * ((double) attack / (double) defense)) / 50 + 2;
+        double level = isPlayer ? battle.getPlayer().getLevel() : battle.getOpponent().getLevel();        double baseDamage = ((((2 * level) / 5) + 2) * movePower * ((double) attack / (double) defense)) / 50 + 2;
         double randomFactor = 0.85 + (random.nextDouble() * 0.15); // 85-100%
         double typeEffectiveness = TypeEffectiveness.getMultiplier(moveType, enemyType);
 

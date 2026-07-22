@@ -123,6 +123,7 @@ function Battle({ battle, setBattle, onBackToMenu, onInventoryChanged, inventory
           <div className="pokemon-slot opponent-slot">
             <div className="pokemon-info">
               <h3>{battle.opponent.name}</h3>
+              <h4>Lvl {battle.opponent.level}</h4>
               <div className="health-bar-container">
                 {/* The bar's width and color are computed inline from HP. Because
                   these are recalculated every render, the bar animates smoothly
@@ -155,6 +156,7 @@ function Battle({ battle, setBattle, onBackToMenu, onInventoryChanged, inventory
             </div>
             <div className="pokemon-info">
               <h3>{battle.player.name}</h3>
+              <h4>Lvl {battle.player.level}</h4>
               <div className="health-bar-container">
                 <div
                     className="health-bar"

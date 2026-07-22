@@ -56,6 +56,7 @@ function PokemonList({ pokemon, onSelectPokemon }) {
               <img src={poke.sprite} alt={poke.name} />
             </div>
             <h3>{poke.name}</h3>
+            <h4>Level: {poke.level}</h4>
             <span
               className="pokemon-type"
               // The `style` prop takes a JS object (note the double braces:

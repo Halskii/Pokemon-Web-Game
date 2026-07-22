@@ -32,13 +32,7 @@ public class TrainerService {
     }
 
     public List<Pokemon> getCollection() {
-        List<Integer> pokemonIds = trainerRepository.getOwnedPokemonIds();
-
-        // Matching pokemon IDs to pokemon objects
-        return pokemonIds.stream()
-                .map(id -> pokemonRepository.findById(id).orElse(null))
-                .filter(pokemon -> pokemon != null)
-                .collect(Collectors.toList());
+        return trainerRepository.getPlayer().getCollection();
     }
 
     public void chooseStarter(int pokemonId) {

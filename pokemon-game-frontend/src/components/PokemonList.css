@@ -55,6 +55,12 @@
   font-size: 1.5rem;
 }
 
+.pokemon-card h4 {
+  color: #333;
+  margin: 10px 0;
+  font-size: 1.1rem;
+}
+
 .pokemon-type {
   display: inline-block;
   padding: 5px 15px;

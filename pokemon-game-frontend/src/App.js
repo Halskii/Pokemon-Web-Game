@@ -131,8 +131,10 @@ function App() {
   };
 
   const handleBackToMenu = () => {
+    // Always refresh collection after battle to get updated stats (levels, HP, etc.)
+    fetchTrainerCollection();
+    
     if (battle && battle.caught) {
-      fetchTrainerCollection();
       fetchInventory();
     }
 

@@ -8,6 +8,7 @@ import com.pokemon.model.Type;
 public class Pokemon {
     private int id;
     private String name;
+    private int level;
     private Type type;
     private int maxHp;
     private int currentHp;
@@ -21,10 +22,11 @@ public class Pokemon {
         this.moves = new ArrayList<>();
     }
 
-    public Pokemon(int id, String name, Type type, int maxHp, int attack,
+    public Pokemon(int id, String name, int level, Type type, int maxHp, int attack,
                    int defense, int speed, String sprite) {
         this.id = id;
         this.name = name;
+        this.level = level;
         this.type = type;
         this.maxHp = maxHp;
         this.currentHp = maxHp;
@@ -39,6 +41,7 @@ public class Pokemon {
     public Pokemon(Pokemon other) {
         this.id = other.id;
         this.name = other.name;
+        this.level = other.level;
         this.type = other.type;
         this.maxHp = other.maxHp;
         this.currentHp = other.maxHp; // Reset HP for battle
@@ -173,5 +176,23 @@ public class Pokemon {
                 ", currentHp=" + currentHp +
                 ", maxHp=" + maxHp +
                 '}';
+    }
+
+    public int getLevel() {
+        return level;
+    }
+
+    public void setLevel(int level) {
+        this.level = level;
+    }
+
+    public void levelUp() {
+        this.level++;
+        // Increase stats on level up (example logic)
+        this.maxHp += 10;
+        this.currentHp = this.maxHp; // Heal to full on level up
+        this.attack += 2;
+        this.defense += 2;
+        this.speed += 1;
     }
 }
