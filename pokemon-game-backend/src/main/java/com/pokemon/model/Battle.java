@@ -10,7 +10,8 @@ public class Battle {
     private Pokemon opponent;
     private String turn;
     private List<String> log;
-    
+    private boolean caught;
+
     public Battle() {
         this.id = UUID.randomUUID().toString();
         this.log = new ArrayList<>();
@@ -34,11 +35,13 @@ public class Battle {
     }
     
     public boolean isOver() {
-        return player.isFainted() || opponent.isFainted();
+        return player.isFainted() || opponent.isFainted() || caught;
     }
-    
+
     public String getWinner() {
-        if (opponent.isFainted() && !player.isFainted()) {
+        if (caught) {
+            return "player";
+        } else if (opponent.isFainted() && !player.isFainted()) {
             return "player";
         } else if (player.isFainted() && !opponent.isFainted()) {
             return "opponent";
@@ -85,5 +88,13 @@ public class Battle {
     
     public void setLog(List<String> log) {
         this.log = new ArrayList<>(log);
+    }
+
+    public boolean isCaught() {
+        return caught;
+    }
+
+    public void setCaught(boolean caught) {
+        this.caught = caught;
     }
 }

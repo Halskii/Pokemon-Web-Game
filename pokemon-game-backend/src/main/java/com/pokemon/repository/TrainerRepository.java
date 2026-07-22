@@ -1,5 +1,6 @@
 package com.pokemon.repository;
 
+import com.pokemon.model.Pokemon;
 import com.pokemon.model.Trainer;
 import org.springframework.stereotype.Repository;
 import java.util.ArrayList;
@@ -17,14 +18,17 @@ public class TrainerRepository {
         return player;
     }
 
-    public void addPokemon(int pokemonId) {
-        // This method should be implemented to add Pokemon to the player's collection
-        // For now, it's a placeholder
+    public void addPokemon(Pokemon pokemon) {
+        player.addPokemon(pokemon);
     }
 
     public List<Integer> getOwnedPokemonIds() {
         return new ArrayList<>(player.getCollection().stream()
                 .map(pokemon -> pokemon.getId())
                 .toList());
+    }
+
+    public void clearCollection() {
+        player.clearCollection();
     }
 }

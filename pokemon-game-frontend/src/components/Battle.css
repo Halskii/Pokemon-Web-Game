@@ -175,6 +175,29 @@
   opacity: 0.9;
 }
 
+.item-button {
+  margin-top: 15px;
+  background: rgba(102, 126, 234, 0.15);
+  border: 2px solid #667eea;
+  color: #667eea;
+  padding: 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: bold;
+  width: 100%;
+  transition: background 0.2s;
+}
+
+.item-button:hover:not(:disabled) {
+  background: rgba(102, 126, 234, 0.3);
+}
+
+.item-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .battle-result {
   text-align: center;
 }
